@@ -16,6 +16,40 @@ An open-source, self-hosted web dashboard and automated monitoring service desig
 
 ---
 
+## Screenshots
+
+### 1. Dashboard Overview & Smart Departure Recommendation
+Monitor real-time morning/evening commute fares alongside automated departure time recommendations based on historical surge trends.
+
+![Dashboard Overview](docs/screenshots/01-dashboard-overview.jpg)
+
+### 2. Multi-Origin Pickup Comparison
+Compare fares from your main office versus 3–5 nearby walkable spots (e.g. adjacent boulevards, metro exits) to easily avoid localized surge premiums.
+
+![Pickup Comparison](docs/screenshots/02-origins-comparison.jpg)
+
+### 3. 15-Minute Price Fluctuation Curve
+Analyze 24-hour fare distributions plotted every 15 minutes (up to 5 data points per hour) to observe exact surge peaks and valleys.
+
+![15-Minute Curve](docs/screenshots/03-timeline-15min-chart.png)
+
+### 4. Multi-Day Comparative Analytics
+Overlay fare trends across different days of the week to identify weekly patterns and price shifts.
+
+![Days Comparison](docs/screenshots/04-days-comparison-chart.png)
+
+### 5. Interactive Map & Custom Pickup Management
+Drag and drop pins on Leaflet map to adjust home/work coordinates and add alternative walkable pickup markers with auto-sync and backup/restore.
+
+![Interactive Map](docs/screenshots/05-interactive-map.jpg)
+
+### 6. Historical Query Logs & Export
+Full sortable logs of every query with fare breakdown, surge ratio, and one-click export to CSV (Excel UTF-8 BOM) or JSON.
+
+![History Table](docs/screenshots/06-price-history-table.jpg)
+
+---
+
 ## Architecture & Tech Stack
 
 - **Backend**: Python 3, FastAPI, SQLite, Background Scheduler
