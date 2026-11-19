@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Snapp Price Tracker & Commute Analytics | سامانه پایش قیمت اسنپ</title>
+  
+  <!-- Font & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom CSS (v2.5 Cache-Busted) -->
+  <link rel="stylesheet" href="/static/style.css?v=2.5">
+</head>
+<body>
+  <!-- Header Bar -->
+  <header class="top-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="logo-box">
+          <i class="fa-solid fa-car-side"></i>
+        </div>
+        <div class="brand-text">
+          <h1>اسنپ ترکر <span>Snapp Tracker 24/7</span></h1>
+          <p>پایش پیوسته شبانه‌روزی و تحلیل کرایه اسنپ (زمان رسمی ایران UTC+3:30)</p>
+        </div>
+      </div>
+
+      <div class="header-status">
+        <div class="status-badge" id="server-time-badge" title="زمان رسمی سرور بر اساس ساعت ایران">
+          <i class="fa-regular fa-clock" style="color: #38bdf8;"></i>
+          <span id="server-time-text">--:--:--</span>
+        </div>
+        <div class="status-badge" id="token-status-badge">
+          <span class="status-dot warning"></span>
+          <span id="token-status-text">بررسی توکن...</span>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('auth-modal')">
+          <i class="fa-solid fa-key"></i> تنظیم توکن احراز هویت
+        </button>
+        <button class="btn btn-outline" onclick="openModal('config-modal')">
+          <i class="fa-solid fa-sliders"></i> تنظیمات و رمز عبور
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="dashboard-container">
+    
+    <!-- Direction Switcher Bar (Filter between Home->Work vs Work->Home vs All) -->
+    <div class="direction-switch-bar">
+      <div class="direction-switch-container">
+        <button class="dir-btn active dir-morning" id="dir-btn-home-work" onclick="setActiveDirection('home_to_work')">
+          <i class="fa-solid fa-sun" style="color: #fbbf24;"></i>
+          <span>مسیر اول: رفت به سرکار (صبح)</span>
+        </button>
+        <button class="dir-btn dir-evening" id="dir-btn-work-home" onclick="setActiveDirection('work_to_home')">
+          <i class="fa-solid fa-building-user"></i>
+          <span>مسیر دوم: برگشت به خانه و مقایسه اطراف (عصر)</span>
+        </button>
+        <button class="dir-btn dir-all" id="dir-btn-all" onclick="setActiveDirection('all')">
+          <i class="fa-solid fa-layer-group"></i>
+          <span>نمای جامع (هر دو مسیر هم‌زمان)</span>
+        </button>
+      </div>
+      <div class="direction-focus-banner" id="direction-focus-banner">
+        <i class="fa-solid fa-circle-check" style="color: #22c55e;"></i>
+        <span id="direction-focus-text">نمای فعال: مسیر رفت به سرکار (صبح)</span>
+      </div>
+    </div>
+
+    <!-- Container for Browser LocalStorage Restore Notification -->
+    <div id="restore-banner-container"></div>
+
+    <!-- Hero / Recommendation Banner -->
+    <section class="recommendation-banner" id="recommendation-banner">
+      <div class="banner-icon">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+      </div>
+      <div class="banner-content">
+        <h3 id="recommendation-title">تحلیل هوشمند بهترین زمان حرکت</h3>
+        <p id="recommendation-desc">در حال پردازش داده‌های رفت و برگشت شبانه‌روزی...</p>
+      </div>
+      <div class="banner-actions">
+        <button class="btn btn-sm btn-white" onclick="seedSampleData()">
+          <i class="fa-solid fa-database"></i> بارگذاری داده‌های نمونه ۲۴ ساعته (۷ روز گذشته)
+        </button>
+      </div>
+    </section>
+
+    <!-- Real-time Commute Cards -->
+    <section class="cards-grid">
+      <!-- Morning Route (Home -> Work) -->
+      <div class="route-card morning" id="morning-route-card">
+        <div class="card-header">
+          <div class="route-title">
+            <span class="route-icon"><i class="fa-solid fa-sun"></i></span>
+            <div>
+              <h3>مسیر اول: خانه به محل کار</h3>
+              <span class="route-subtitle">پایش پیوسته ۲۴ ساعته</span>
+            </div>
+          </div>
+          <button class="btn-icon" onclick="triggerCheck('home_to_work')" title="استعلام زنده قیمت هم‌اکنون">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+
+        <div class="price-display">
+          <div class="current-price" id="morning-current-price">---</div>
+          <div class="price-unit">تومان</div>
+        </div>
+
+        <div class="card-metrics">
+          <div class="metric-item">
+            <span class="metric-label">ارزان‌ترین ساعت امروز:</span>
+            <span class="metric-value highlight" id="morning-best-time">--:--</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">حداقل کرایه مشاهده‌شده:</span>
+            <span class="metric-value" id="morning-min-price">--- تومان</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">بازه اوج گرانی (Surge):</span>
+            <span class="metric-value danger" id="morning-peak-time">--:--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Evening Route (Work -> Home) -->
+      <div class="route-card evening" id="evening-route-card">
+        <div class="card-header">
+          <div class="route-title">
+            <span class="route-icon"><i class="fa-solid fa-moon"></i></span>
+            <div>
+              <h3>مسیر دوم: محل کار به خانه</h3>
+              <span class="route-subtitle">پایش پیوسته ۲۴ ساعته</span>
+            </div>
+          </div>
+          <button class="btn-icon" onclick="triggerCheck('work_to_home')" title="استعلام زنده قیمت هم‌اکنون">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+
+        <div class="price-display">
+          <div class="current-price" id="evening-current-price">---</div>
+          <div class="price-unit">تومان</div>
+        </div>
+
+        <div class="card-metrics">
+          <div class="metric-item">
+            <span class="metric-label">ارزان‌ترین ساعت امروز:</span>
+            <span class="metric-value highlight" id="evening-best-time">--:--</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">حداقل کرایه مشاهده‌شده:</span>
+            <span class="metric-value" id="evening-min-price">--- تومان</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">بازه اوج گرانی (Surge):</span>
+            <span class="metric-value danger" id="evening-peak-time">--:--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Stats Card -->
+      <div class="route-card stats" id="stats-route-card">
+        <div class="card-header">
+          <div class="route-title">
+            <span class="route-icon"><i class="fa-solid fa-chart-simple"></i></span>
+            <div>
+              <h3>وضعیت سیستم پایش آنلاین</h3>
+              <span class="route-subtitle">پایش خودکار ۲۴ ساعته</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-list">
+          <div class="stat-row">
+            <span>تعداد کل قیمت‌های ثبت‌شده:</span>
+            <strong id="stat-total-records">۰ رکورد</strong>
+          </div>
+          <div class="stat-row">
+            <span>آخرین استعلام موفق (ساعت ایران):</span>
+            <strong id="stat-last-poll">هنوز انجام نشده</strong>
+          </div>
+          <div class="stat-row">
+            <span>وضعیت سرویس‌کار پس‌زمینه:</span>
+            <strong class="text-success" id="stat-scheduler-status">فعال (پایش ۲۴/۷ هر ۱۰ دقیقه)</strong>
+          </div>
+          <div class="stat-row">
+            <span>حفاظت امنیتی پنل:</span>
+            <strong id="stat-security-status">بررسی...</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Origin Comparison Section: Work vs Candidate Nearby Points -->
+    <section class="origins-comparison-section" id="origins-comparison-section">
+      <div class="panel-header">
+        <div class="panel-title">
+          <i class="fa-solid fa-code-compare" style="color: #f59e0b;"></i>
+          <div>
+            <h2>مقایسه هوشمند مبادی بازگشت به خانه (محل کار و ۳-۴ نقطه اطراف)</h2>
+            <span class="panel-subtitle">کدام نقطه پیاده‌روی در اطراف محل کار هم‌اکنون ارزان‌ترین کرایه و کمترین Surge را دارد؟</span>
+          </div>
+        </div>
+        <div class="panel-controls">
+          <button class="btn btn-sm btn-primary" onclick="triggerCheckAllWorkOrigins(event)">
+            <i class="fa-solid fa-bolt"></i> استعلام زنده هم‌زمان تمام مبادی
+          </button>
+          <button class="btn btn-sm btn-outline" onclick="addNewWorkAltMarker()">
+            <i class="fa-solid fa-plus"></i> + افزودن نقطه جدید اطراف کار
+          </button>
+        </div>
+      </div>
+
+      <!-- Service Selector for Origin Comparison (Large Interactive Tabs) -->
+      <div class="origin-service-selector" id="origin-service-selector">
+        <div class="service-selector-header">
+          <span class="service-selector-label">
+            <i class="fa-solid fa-layer-group" style="color: #f59e0b;"></i> انتخاب نوع سرویس اسنپ برای مقایسه:
+          </span>
+          <span id="active-service-notice" style="font-size: 13px; color: var(--text-dim);">
+            در حال مقایسه بر اساس: <strong id="active-service-notice-name" style="color: #22c55e;">اسنپ (به صرفه)</strong>
+          </span>
+        </div>
+        <div class="service-tabs-container" id="comparison-service-pills">
+          <div class="service-tab-card active" id="srv-tab-1" onclick="switchComparisonService('1')">
+            <div class="service-tab-info">
+              <span class="service-tab-title"><i class="fa-solid fa-car"></i> اسنپ معمولی</span>
+              <span class="service-tab-desc">اقتصادی و به‌صرفه (Eco)</span>
+            </div>
+            <i class="fa-solid fa-circle-check service-tab-check"></i>
+          </div>
+          <div class="service-tab-card" id="srv-tab-2" onclick="switchComparisonService('2')">
+            <div class="service-tab-info">
+              <span class="service-tab-title"><i class="fa-solid fa-sparkles"></i> اسنپ اکوپلاس</span>
+              <span class="service-tab-desc">خودروهای مدل بالا و ویژه</span>
+            </div>
+            <i class="fa-solid fa-circle-check service-tab-check"></i>
+          </div>
+          <div class="service-tab-card" id="srv-tab-24" onclick="switchComparisonService('24')">
+            <div class="service-tab-info">
+              <span class="service-tab-title"><i class="fa-solid fa-users"></i> سفر اشتراکی</span>
+              <span class="service-tab-desc">تا ۱۰ دقیقه انتظار (کرایه کمتر)</span>
+            </div>
+            <i class="fa-solid fa-circle-check service-tab-check"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="origins-grid" id="origins-comparison-grid">
+        <!-- Rendered dynamically by JS -->
+      </div>
+    </section>
+
+    <!-- Visualizations Section -->
+    <section class="charts-section">
+      <!-- Main Timeline Chart (15-Minute Resolution) -->
+      <div class="chart-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i class="fa-solid fa-chart-line"></i>
+            <div>
+              <h2>نمودار تفکیکی نوسان قیمت (فاصله زمانی ۱۵ دقیقه - ساعت رسمی ایران)</h2>
+              <span class="panel-subtitle">نمایش دقیق ۵ نقطه به ازای هر ساعت (مثلاً ۱۲:۰۰، ۱۲:۱۵، ۱۲:۳۰، ۱۲:۴۵، ۱۳:۰۰)</span>
+            </div>
+          </div>
+          <div class="panel-controls">
+            <div class="control-group">
+              <label>مسیر:</label>
+              <select id="hourly-route-select" onchange="loadHourlyChart()">
+                <option value="home_to_work">خانه به کار</option>
+                <option value="work_to_home">کار به خانه</option>
+                <option value="all">همه مسیرها</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label>سرویس:</label>
+              <select id="hourly-service-select" onchange="loadHourlyChart()">
+                <option value="1">اسنپ (به صرفه)</option>
+                <option value="2">اسنپ اکوپلاس (ویژه)</option>
+                <option value="24">سفر اشتراکی</option>
+                <option value="all">همه سرویس‌ها</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label>فاصله زمانی:</label>
+              <select id="hourly-interval-select" onchange="loadHourlyChart()">
+                <option value="15" selected>هر ۱۵ دقیقه (دقیق‌ترین)</option>
+                <option value="30">هر ۳۰ دقیقه</option>
+                <option value="60">هر ۱ ساعت</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label>تاریخ:</label>
+              <select id="hourly-date-select" onchange="loadHourlyChart()">
+                <option value="all">تمام روزها (میانگین کلی)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="hourlyChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Multi-Date Comparison Chart -->
+      <div class="chart-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i class="fa-solid fa-calendar-days"></i>
+            <h2>مقایسه قیمت در روزهای مختلف هفته</h2>
+          </div>
+          <div class="panel-controls">
+            <div class="control-group">
+              <label>مسیر:</label>
+              <select id="date-chart-route-select" onchange="loadDateComparisonChart()">
+                <option value="home_to_work">خانه به کار</option>
+                <option value="work_to_home">کار به خانه</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="dateComparisonChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Map & Route Preview Section -->
+    <section class="map-section">
+      <div class="panel-header">
+        <div class="panel-title">
+          <i class="fa-solid fa-map-location-dot"></i>
+          <div>
+            <h2>موقعیت مبدأ و مقصد روی نقشه (جابجایی با کشیدن سنجاق‌ها)</h2>
+            <span class="panel-subtitle">امکان ذخیره، پشتیبان‌گیری و بازیابی خودکار لوکیشن‌ها</span>
+          </div>
+        </div>
+        <div class="panel-controls">
+          <button class="btn btn-sm btn-outline" onclick="exportLocationsBackup()" title="دانلود فایل پشتیبان JSON حاوی موقعیت خانه، محل کار و تمام نقاط اطراف">
+            <i class="fa-solid fa-file-export" style="color: #38bdf8;"></i> پشتیبان‌گیری لوکیشن‌ها (Export)
+          </button>
+          <button class="btn btn-sm btn-outline" onclick="triggerImportLocations()" title="بارگذاری فایل پشتیبان JSON برای بازنشانی سریع لوکیشن‌ها">
+            <i class="fa-solid fa-file-import" style="color: #22c55e;"></i> بازیابی لوکیشن‌ها (Import)
+          </button>
+          <input type="file" id="locations-import-file" accept=".json" style="display:none;" onchange="handleLocationsFileSelect(event)">
+          <button class="btn btn-sm btn-outline" onclick="addNewWorkAltMarker()">
+            <i class="fa-solid fa-location-crosshairs" style="color: #f59e0b;"></i> + افزودن نقطه اطراف کار روی نقشه
+          </button>
+          <button class="btn btn-sm btn-primary" onclick="saveCoordinatesFromMap()">
+            <i class="fa-solid fa-floppy-disk"></i> ذخیره مختصات جدید
+          </button>
+        </div>
+      </div>
+      <div id="map" class="map-container"></div>
+      <div class="map-legend">
+        <div class="legend-item"><span class="marker-dot home"></span> خانه (Home): <span id="map-home-coords">35.7007, 51.3950</span></div>
+        <div class="legend-item"><span class="marker-dot work"></span> محل کار اصلی (Work): <span id="map-work-coords">35.7575, 51.4100</span></div>
+        <div class="legend-item"><span class="marker-dot alt"></span> نقاط جایگزین اطراف کار (نارنجی): <span id="map-alt-count">۰ نقطه</span></div>
+        <div class="legend-tip"><i class="fa-solid fa-circle-info"></i> لوکیشن‌ها به‌طور خودکار در حافظه مرورگر شما نیز پشتیبان‌گیری می‌شوند تا با هر بار آپدیت یا استقرار پاک نشوند.</div>
+      </div>
+      <div id="alt-points-list-container" class="alt-points-list">
+        <!-- Rendered dynamically by JS -->
+      </div>
+    </section>
+
+    <!-- Recent Logs Table -->
+    <section class="table-section">
+      <div class="panel-header">
+        <div class="panel-title">
+          <i class="fa-solid fa-table-list"></i>
+          <div>
+            <h2>تاریخچه استعلام‌های ثبت‌شده (ساعت رسمی ایران)</h2>
+            <span class="panel-subtitle">امکان سورت ستون‌ها با کلیک روی سرستون‌ها یا منوی مرتب‌سازی و دریافت خروجی اکسل/JSON</span>
+          </div>
+        </div>
+        <div class="panel-controls">
+          <div class="export-btn-group">
+            <a href="/api/export?format=csv" id="btn-export-csv" class="btn btn-sm btn-outline btn-export" download title="دانلود فایل اکسل CSV با پشتیبانی کامل از زبان فارسی">
+              <i class="fa-solid fa-file-excel" style="color: #22c55e;"></i> خروجی اکسل (CSV)
+            </a>
+            <a href="/api/export?format=json" id="btn-export-json" class="btn btn-sm btn-outline btn-export" download title="دانلود داده‌ها در قالب استاندارد JSON">
+              <i class="fa-solid fa-file-code" style="color: #38bdf8;"></i> خروجی JSON
+            </a>
+          </div>
+          <button class="btn btn-sm btn-primary" onclick="loadRecentTable()">
+            <i class="fa-solid fa-arrows-rotate"></i> بروزرسانی جدول
+          </button>
+        </div>
+      </div>
+
+      <!-- Table Toolbar (Filters & Sorting) -->
+      <div class="table-toolbar">
+        <div class="table-filters">
+          <div class="control-group">
+            <label>فیلتر مسیر:</label>
+            <select id="table-route-filter" onchange="loadRecentTable()">
+              <option value="all">همه مسیرها</option>
+              <option value="home_to_work">خانه به کار</option>
+              <option value="work_to_home">کار اصلی به خانه</option>
+              <option value="alternatives">فقط نقاط اطراف کار به خانه</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label>فیلتر سرویس:</label>
+            <select id="table-service-filter" onchange="loadRecentTable()">
+              <option value="all">همه سرویس‌ها</option>
+              <option value="1">اسنپ (به صرفه)</option>
+              <option value="2">اسنپ اکوپلاس (ویژه)</option>
+              <option value="24">سفر اشتراکی</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label>مرتب‌سازی:</label>
+            <select id="table-sort-select" onchange="onTableSortSelectChange(this.value)">
+              <option value="time_desc">جدیدترین استعلام‌ها (پیش‌فرض)</option>
+              <option value="time_asc">قدیمی‌ترین استعلام‌ها</option>
+              <option value="price_asc">ارزان‌ترین قیمت (صعودی)</option>
+              <option value="price_desc">گران‌ترین قیمت (نزولی)</option>
+              <option value="surge_desc">بیشترین گرانی تقاضا (Surge)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="sortable" onclick="toggleTableSort('time')" title="کلیک جهت مرتب‌سازی زمانی">
+                زمان ثبت (ساعت ایران) <i id="th-sort-icon-time" class="fa-solid fa-sort-down"></i>
+              </th>
+              <th>مسیر</th>
+              <th>نوع سرویس</th>
+              <th class="sortable" onclick="toggleTableSort('price')" title="کلیک جهت مرتب‌سازی بر اساس کرایه نهایی">
+                هزینه نهایی <i id="th-sort-icon-price" class="fa-solid fa-sort"></i>
+              </th>
+              <th class="sortable" onclick="toggleTableSort('raw_fare')" title="کلیک جهت مرتب‌سازی بر اساس کرایه پایه">
+                کرایه پایه <i id="th-sort-icon-raw_fare" class="fa-solid fa-sort"></i>
+              </th>
+              <th class="sortable" onclick="toggleTableSort('surge')" title="کلیک جهت مرتب‌سازی بر اساس Surge">
+                وضعیت Surge <i id="th-sort-icon-surge" class="fa-solid fa-sort"></i>
+              </th>
+              <th>زمان تخمینی (ETA)</th>
+            </tr>
+          </thead>
+          <tbody id="prices-table-body">
+            <tr>
+              <td colspan="7" class="text-center">در حال دریافت تاریخچه...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal: Authentication & Token Setup -->
+  <div class="modal-backdrop" id="auth-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-shield-halved"></i> اتصال امن به اسنپ (حفاظت کامل از توکن)</h3>
+        <button class="btn-close" onclick="closeModal('auth-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <i class="fa-solid fa-shield-check"></i>
+          <div>
+            <strong>امنیت و حفظ حریم خصوصی:</strong><br>
+            توکن‌های شما در دیسک اختصاصی سرور ذخیره می‌شوند و هیچ کاربری بدون رمز عبور نمی‌تواند آن‌ها را ببیند یا ویرایش کند.
+            <ol class="setup-steps">
+              <li>سایت <a href="https://app.snapp.taxi" target="_blank" rel="noopener">app.snapp.taxi</a> را در مرورگر (کروم/اج) باز کنید و وارد حسابتان شوید.</li>
+              <li>کلید <code>F12</code> را فشار دهید و تب <strong>Console</strong> را انتخاب کنید.</li>
+              <li>دستور زیر را کپی و در کنسول اجرا (Enter) کنید:
+                <div class="code-box">
+                  <code>copy(localStorage.getItem('accessToken'))</code>
+                  <button class="btn-copy" onclick="copySnippet('copy(localStorage.getItem(\'accessToken\'))')">کپی</button>
+                </div>
+              </li>
+              <li>توکن کپی‌شده را در کادر زیر قرار دهید.</li>
+            </ol>
+          </div>
+        </div>
+
+        <form id="token-form" onsubmit="handleTokenSubmit(event)">
+          <div class="form-group">
+            <label for="input-access-token">Access Token (توکن اصلی احراز هویت):</label>
+            <textarea id="input-access-token" rows="3" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="input-refresh-token">Refresh Token (جهت تمدید خودکار دائمی):</label>
+            <input type="text" id="input-refresh-token" placeholder="برای کپی: copy(localStorage.getItem('refreshToken'))">
+          </div>
+
+          <div class="modal-actions">
+            <button type="submit" class="btn btn-primary">
+              <i class="fa-solid fa-check"></i> ذخیره و فعال‌سازی توکن
+            </button>
+            <button type="button" class="btn btn-outline" onclick="testCurrentToken()">
+              <i class="fa-solid fa-vial"></i> تست استعلام با توکن فعلی
+            </button>
+            <button type="button" class="btn btn-ghost" onclick="closeModal('auth-modal')">انصراف</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Route, Schedule & Password Settings -->
+  <div class="modal-backdrop" id="config-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-sliders"></i> تنظیمات مسیرها، پایش ۲۴/۷ و رمز عبور</h3>
+        <button class="btn-close" onclick="closeModal('config-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="config-form" onsubmit="handleConfigSubmit(event)">
+          
+          <h4 class="form-section-title"><i class="fa-solid fa-location-dot"></i> مختصات جغرافیایی</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label>عرض جغرافیایی خانه (Home Lat):</label>
+              <input type="number" step="any" id="cfg-home-lat" required>
+            </div>
+            <div class="form-group">
+              <label>طول جغرافیایی خانه (Home Lng):</label>
+              <input type="number" step="any" id="cfg-home-lng" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>عرض جغرافیایی محل کار (Work Lat):</label>
+              <input type="number" step="any" id="cfg-work-lat" required>
+            </div>
+            <div class="form-group">
+              <label>طول جغرافیایی محل کار (Work Lng):</label>
+              <input type="number" step="any" id="cfg-work-lng" required>
+            </div>
+          </div>
+
+          <h4 class="form-section-title"><i class="fa-solid fa-clock"></i> تنظیمات پایش خودکار شبانه‌روزی (۲۴/۷)</h4>
+          <div class="schedule-box">
+            <div class="form-group">
+              <label>فاصله زمانی بین هر استعلام (دقیقه):</label>
+              <input type="number" id="cfg-247-interval" min="5" max="120" value="10" required>
+              <small style="color: var(--text-dim); display: block; margin-top: 5px;">
+                سیستم به‌طور خودکار در تمام ساعات شبانه‌روز هر ۱۰ دقیقه (یا بازه انتخابی شما) هر دو مسیر «خانه به کار» و «کار به خانه» را استعلام و ثبت می‌کند تا دیتای کامل روزانه تولید شود.
+              </small>
+            </div>
+          </div>
+
+          <h4 class="form-section-title"><i class="fa-solid fa-shield-halved"></i> حفاظت و رمز عبور دسترسی آنلاین</h4>
+          <div class="form-group">
+            <label>رمز عبور ورود به پنل (اختیاری جهت قفل کردن سایت):</label>
+            <input type="password" id="cfg-password" placeholder="اگر می‌خواهید پنل با پسورد باز شود وارد کنید">
+            <small style="color: var(--text-dim); display: block; margin-top: 5px;">
+              می‌توانید متغیر محیطی <code>APP_PASSWORD</code> (در تنظیمات سرور، داکر یا فایل <code>.env</code>) را تعریف کنید تا پنل با احراز هویت محافظت شود.
+            </small>
+          </div>
+
+          <div class="modal-actions">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> ذخیره تغییرات</button>
+            <button type="button" class="btn btn-ghost" onclick="closeModal('config-modal')">انصراف</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast Container -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Main App Script (v2.5 Cache-Busted) -->
+  <script src="/static/app.js?v=2.5"></script>
+</body>
+</html>

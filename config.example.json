@@ -1,0 +1,54 @@
+{
+  "auth": {
+    "access_token": "",
+    "refresh_token": "",
+    "token_type": "Bearer",
+    "last_updated": null
+  },
+  "routes": {
+    "home": {
+      "name": "خانه (Home)",
+      "lat": 35.7007,
+      "lng": 51.3950,
+      "address": "میدان آزادی، تهران"
+    },
+    "work": {
+      "name": "محل کار اصلی (Main Office)",
+      "lat": 35.7575,
+      "lng": 51.4100,
+      "address": "میدان آرژانتین، تهران"
+    },
+    "work_alternatives": [
+      {
+        "id": "alt_1",
+        "name": "سر خیابان اصلی (۱۸۰ متر پیاده)",
+        "lat": 35.7605,
+        "lng": 51.4098,
+        "enabled": true
+      },
+      {
+        "id": "alt_2",
+        "name": "خروجی ایستگاه مترو (۳۵۰ متر پیاده)",
+        "lat": 35.7562,
+        "lng": 51.4062,
+        "enabled": true
+      },
+      {
+        "id": "alt_3",
+        "name": "تقاطع بلوار مجاور (۴۰۰ متر پیاده)",
+        "lat": 35.7619,
+        "lng": 51.4067,
+        "enabled": true
+      }
+    ]
+  },
+  "schedules": {
+    "continuous_24_7": {
+      "enabled": true,
+      "interval_minutes": 10
+    }
+  },
+  "security": {
+    "password": ""
+  }
+}

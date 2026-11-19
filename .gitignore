@@ -1,0 +1,49 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# Runtime SQLite databases & user configuration
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/config.json
+*.db
+*.sqlite
+*.sqlite3
+
+# Keep data directory structure
+!data/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# IDE & OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Archives & Temporary exports
+*.zip
+*.tar.gz
